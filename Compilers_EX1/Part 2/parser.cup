@@ -1,0 +1,107 @@
+/* Simple +/-/* expression language; parser evaluates constant expressions on the fly*/
+/**
+ *  Package and Import Specifications
+ */
+import java_cup.runtime.*;
+
+/**
+ *  Usercode Components
+ */
+parser code {:
+    // Connect this parser to a scanner!
+    Scanner s;
+    Parser(Scanner s){ this.s=s; }
+:}
+
+/* define how to connect to the scanner! */
+scan with {: return s.next_token(); :};
+
+/**
+ *  Symbol Lists
+ */
+
+/* Terminals (tokens returned by the scanner). */
+terminal           PLUS, MINUS, TIMES, DIV, MOD, LPAREN, RPAREN, LBRACE, RBRACE, IF,ELSE,EQ,LT,GT;
+terminal String    NUMBER,ID;        // our scanner provides numbers as integers
+terminal String    COMMA;
+
+/*  Non terminals */
+non terminal            expr_list;
+non terminal String    expr,define,call,args,body,cond,stmt,withelse;      // used to store evaluated subexpressions
+
+/**
+ *  Precedence Declarations
+ */
+precedence left COMMA,ELSE;
+precedence left PLUS, MINUS;
+precedence left TIMES,DIV,MOD;
+precedence left LPAREN;
+
+
+/**
+ *  The Grammar Rules
+ */
+
+
+
+expr_list ::= expr_list expr:e   			{: System.out.println(e);:}			
+			| expr:e						{: System.out.println(e);:}
+			| expr_list define:d   			{: System.out.println(d);:}
+			| define:d						{: System.out.println(d);:}	
+;
+
+
+
+expr		::= NUMBER:n					{: RESULT = n;				:}
+			|	ID:i						{: RESULT = i;				:}	
+			|   call:c						{: RESULT = c; 				:}
+			|   stmt:s						{: RESULT = s ; 	:}
+			|	expr:e1 PLUS  expr:e2		{: RESULT = "(+ " + e1 + " " + e2 + ")";     :}
+			| 	expr:e1 MINUS expr:e2		{: RESULT = "(- " + e1 + " " + e2 + ")";     :}
+			| 	expr:e1 TIMES expr:e2		{: RESULT = "(* " + e1 + " " + e2 + ")";     :}
+			| 	expr:e1 DIV expr:e2			{: RESULT = "(/ " + e1 + " " + e2 + ")";     :}
+			| 	expr:e1 MOD expr:e2			{: RESULT = "(mod " + e1 + " " + e2 + ")";   :}	
+			|  	LPAREN expr:e	RPAREN		{: RESULT = e; :}
+;
+
+
+body		::= expr:e						{: RESULT = e;             :}
+			|	/*epsilon*/					{: RESULT = "";             :}	
+;
+
+call	::=	ID:name LPAREN args:a RPAREN			
+{:  
+									if(a!=""){
+										RESULT = "(" + name  + " " +  a + ")" ; 
+								    }else{
+										RESULT = "(" + name + ")";
+									}			
+:}				
+;
+
+args	::=	expr:n						{: RESULT = n;             :}
+		|   args:a1 COMMA args:a2		{: RESULT = a1 + " " + a2;:} 		
+		|								{: RESULT = "";			   :}
+; 	
+
+define	::= ID:name LPAREN args:a RPAREN LBRACE body: b RBRACE 
+{: 
+									if(a!=""){
+										RESULT = "(define (" + name + " " + a  + ") "  + b + ")\n" ; 
+									}else{
+										RESULT = "(define (" + name + ") "  + b + ")\n" ; 
+									}
+:}
+;
+
+stmt	::=	IF LPAREN cond:c RPAREN expr:e1 ELSE expr:e2  {: RESULT = "\n\t(if " + c  + " "  + "\n\t\t" + e1 + "\n\t\t" + e2 +")" ;  :}	
+;
+
+cond ::= expr:e1 EQ expr:e2				{: RESULT = "(= " + e1 + " " + e2 + ")";      :}
+		| expr:e1 LT expr:e2			{: RESULT = "(< " + e1 + " " + e2 + ")";      :}					
+		| expr:e1 GT expr:e2			{: RESULT = "(> " + e1 + " " + e2 + ")";      :}				
+;					
+
+
+
+		
